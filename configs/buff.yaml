@@ -1,0 +1,61 @@
+buff_type: "small"
+detector_color: 1
+color_type: 1
+debug: 1
+dt: 0.02                  # 卡尔曼时间步长
+visualization: 1          # 可视化总开关 1开 0关
+
+# 卡尔曼滤波噪声参数
+kalman:
+  process_noise: 0.0001   # 过程噪声协方差 Q
+  measure_noise: 0.1      # 测量噪声协方差 R
+
+small_buff: 
+  detector: 
+    threshold: 180
+large_buff:
+  detector:
+    threshold: 130
+
+detector:
+  morph_size: 3
+  roi:
+    width: 450
+    height: 450
+    y_offset: -120
+  fanblade:
+    min_h: 70
+    min_w: 60
+    max_h: 200
+    max_w: 250
+    hw_ratio_min: 1.7
+    hw_ratio_max: 2.3
+    area_rect_ratio_min: 0.40
+  center:
+    max_h: 20
+    max_w: 20
+    hw_ratio_min: 0.8
+    hw_ratio_max: 1.2
+
+hsv:
+  red_range1:
+    h_min: 0
+    h_max: 40
+    s_min: 100
+    s_max: 255
+    v_min: 100
+    v_max: 255
+  red_range2:
+    h_min: 155
+    h_max: 180
+    s_min: 100
+    s_max: 255
+    v_min: 100
+    v_max: 255
+  blue_range:
+    h_min: 105
+    h_max: 118
+    s_min: 100
+    s_max: 255
+    v_min: 100
+    v_max: 255

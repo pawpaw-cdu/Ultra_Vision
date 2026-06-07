@@ -1,0 +1,13 @@
+tracker:
+  min_detect_frames: 3          # 降低连续检测帧数要求，更快进入跟踪
+  max_lost_frames: 15           # 增加丢失容忍帧数，避免短暂丢失导致目标重置
+  max_match_distance: 1.5       # 增大匹配距离阈值（米），适应检测跳动
+
+  kalman:
+    state_dim: 6
+    measure_dim: 4
+    process_noise_pos: 0.01     # 降低位置过程噪声，使预测更平滑
+    process_noise_vel: 0.01
+    measure_noise: 0.05          # 增大测量噪声，更信任预测
+    init_error_cov: 10.0
+    default_dt: 0.015

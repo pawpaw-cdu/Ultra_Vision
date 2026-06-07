@@ -1,0 +1,3 @@
+/home/pawpaw-ubuntu/rm_ultra/CMakeFiles/test.dir
+/home/pawpaw-ubuntu/rm_ultra/CMakeFiles/edit_cache.dir
+/home/pawpaw-ubuntu/rm_ultra/CMakeFiles/rebuild_cache.dir

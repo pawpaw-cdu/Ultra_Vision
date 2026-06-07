@@ -1,0 +1,34 @@
+# 相机配置
+
+camera:
+  name: "galaxy"
+  device_index: 1          # 设备索引（从1开始）
+  serial_number: ""        # 可选，如果指定则优先使用序列号
+  timeout_ms: 1000         # 取图超时（毫秒）
+
+# 相机内参矩阵（3x3）和畸变系数
+galaxy:
+  camera_matrix:
+    rows: 3
+    cols: 3
+    data: [1286.0, 0.0, 645.0,
+          0.0, 1288.0, 483.0,
+          0.0, 0.0, 1.0]
+
+  dist_coeffs:
+    rows: 5
+    cols: 1
+    data: [0.0, 0.0, 0.0, 0.0, 0.0]
+
+hikcamera:
+  camera_matrix:
+    rows: 3
+    cols: 3
+    data: [1286.0, 0.0, 645.0,
+          0.0, 1288.0, 483.0,
+          0.0, 0.0, 1.0]
+
+  dist_coeffs:
+    rows: 5
+    cols: 1
+    data: [0.0, 0.0, 0.0, 0.0, 0.0]
