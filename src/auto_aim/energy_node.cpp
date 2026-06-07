@@ -8,215 +8,36 @@
 using namespace std;
 using namespace cv;
 
+// ========================== 可调参数（用于减轻可视化频闪） ==========================
+// 调整这些参数可以平滑圆心和半径的显示，但不会影响检测与模型更新逻辑
+// 数值越大，响应越慢，频闪越轻；数值越小，跟随越快，但可能抖动。
+const float CENTER_SMOOTH = 0.9f;   // 圆心平滑系数 (0~1)，1 表示无平滑，0.3 表示较强平滑
+const float RADIUS_SMOOTH = 0.9f;   // 半径平滑系数 (0~1)
+const float ANGLE_SMOOTH = 0.75f;    // 角度平滑系数，用于检测到扇叶后快速融合预测值
+
 // ========================== 能量机关检测器定义 ==========================
 
 struct EnergyBlade {
     cv::Point2f center;
     int id;
     float angle_rad;
-    cv::Point2f object_points[4];   // 存储四个边角点（正方形）
+    cv::Point2f object_points[4];
 };
 
 struct EnergyDetectorConfig {
-    float angular_velocity_deg = 60.0f;   // 恒定角速度 (度/秒)
-    int num_blades = 5;                   // 扇叶数量
-    float jump_threshold_px = 20.0f;      // 圆心跳变阈值 (像素)
-    float min_radius_px = 30.0f;          // 最小半径 (像素)
-    float max_radius_px = 350.0f;         // 最大半径 (像素)
-    int max_track_lost_frames = 5;        // 最大丢失帧数
-    float max_match_distance_ratio = 0.4f; // 匹配同一扇叶的最大距离系数 (半径的倍数)
+    float angular_velocity_deg = 60.0f;
+    int num_blades = 5;
+    float jump_threshold_px = 20.0f;
+    float min_radius_px = 30.0f;
+    float max_radius_px = 350.0f;
+    int max_track_lost_frames = 5;
+    float max_match_distance_ratio = 0.4f;
+    float r_center_weight = 0.3f;      // R标检测结果的权重 (0~1)
 };
 
-class EnergyDetector {
-public:
-    EnergyDetector(const EnergyDetectorConfig& cfg = EnergyDetectorConfig()) : cfg_(cfg) {
-        reset();
-    }
+// ==================== 基于HSV的扇叶中心检测 ====================
 
-    void reset() {
-        prev_center_ = Point2f(0, 0);
-        current_center_ = Point2f(0, 0);
-        circle_center_ = Point2f(0, 0);
-        temp_center_ = Point2f(0, 0);
-        radius_px_ = 0;
-        blade0_angle_rad_ = 0;
-        last_timestamp_ = 0;
-        lost_frame_count_ = 0;
-        model_initialized_ = false;
-        isOneRun_ = false;
-    }
-
-    bool process(const vector<Point2f>& blade_centers, vector<EnergyBlade>& predicted_blades) {
-        double now = getTimestamp();
-        predicted_blades.clear();
-
-        // 未初始化模型
-        if (!model_initialized_) {
-            if (last_timestamp_ == 0 && !blade_centers.empty()) {
-                prev_center_ = blade_centers[0];
-                last_timestamp_ = now;
-                return false;
-            }
-            else if (last_timestamp_ != 0 && !blade_centers.empty()) {
-                float min_dist = 1e6;
-                int best_idx = -1;
-                for (size_t i = 0; i < blade_centers.size(); ++i) {
-                    float dist = norm(blade_centers[i] - prev_center_);
-                    if (dist < min_dist) {
-                        min_dist = dist;
-                        best_idx = i;
-                    }
-                }
-                if (best_idx != -1 && min_dist < 100.0f) {
-                    current_center_ = blade_centers[best_idx];
-                    double dt = now - last_timestamp_;
-                    if (dt < 1e-6) return false;
-                    float delta_angle = cfg_.angular_velocity_deg * M_PI / 180.0f * dt;
-                    if (computeCircleFromTwoPoints(prev_center_, current_center_, delta_angle,
-                                                   circle_center_, radius_px_)) {
-                        isOneRun_ = true;
-                        temp_center_ = circle_center_;
-                        blade0_angle_rad_ = atan2(prev_center_.y - circle_center_.y,
-                                                  prev_center_.x - circle_center_.x);
-                        model_initialized_ = true;
-                        lost_frame_count_ = 0;
-                        predictAllBlades(predicted_blades);
-                        return true;
-                    }
-                }
-                last_timestamp_ = now;
-                if (!blade_centers.empty()) prev_center_ = blade_centers[0];
-                return false;
-            }
-            return false;
-        }
-
-        // 模型已初始化：跟踪同一扇叶
-        Point2f matched;
-        bool found = findSameBlade(blade_centers, matched);
-        if (found) {
-            current_center_ = matched;
-            double dt = now - last_timestamp_;
-            if (dt > 0) {
-                float delta_angle = cfg_.angular_velocity_deg * M_PI / 180.0f * dt;
-                Point2f new_center;
-                float new_radius;
-                if (computeCircleFromTwoPoints(prev_center_, current_center_, delta_angle,
-                                               new_center, new_radius)) {
-                    if (!isCenterJump(circle_center_, new_center)) {
-                        circle_center_ = new_center;
-                        radius_px_ = new_radius;
-                        blade0_angle_rad_ = atan2(current_center_.y - circle_center_.y,
-                                                  current_center_.x - circle_center_.x);
-                        lost_frame_count_ = 0;
-                    } else {
-                        reset();
-                        return false;
-                    }
-                }
-            }
-            prev_center_ = current_center_;
-            last_timestamp_ = now;
-            predictAllBlades(predicted_blades);
-            return true;
-        } else {
-            lost_frame_count_++;
-            if (lost_frame_count_ > cfg_.max_track_lost_frames) {
-                reset();
-                return false;
-            }
-            predictAllBlades(predicted_blades);
-            return true;
-        }
-    }
-
-    Point2f getCircleCenter() const { return circle_center_; }
-    float getRadius() const { return radius_px_; }
-    bool isModelInitialized() const { return model_initialized_; }
-
-private:
-    EnergyDetectorConfig cfg_;
-    Point2f prev_center_, current_center_, circle_center_, temp_center_;
-    float radius_px_;
-    float blade0_angle_rad_;
-    double last_timestamp_;
-    int lost_frame_count_;
-    bool model_initialized_;
-    bool isOneRun_;
-
-    double getTimestamp() {
-        auto now = chrono::steady_clock::now();
-        return chrono::duration<double>(now.time_since_epoch()).count();
-    }
-
-    bool findSameBlade(const vector<Point2f>& centers, Point2f& matched) {
-        if (centers.empty() || !model_initialized_) return false;
-        float min_dist = 1e6;
-        int best_idx = -1;
-        for (size_t i = 0; i < centers.size(); ++i) {
-            float dist = norm(centers[i] - prev_center_);
-            if (dist < min_dist) {
-                min_dist = dist;
-                best_idx = i;
-            }
-        }
-        float max_match_dist = (radius_px_ > 0) ? radius_px_ * cfg_.max_match_distance_ratio : 50.0f;
-        if (best_idx != -1 && min_dist < max_match_dist) {
-            matched = centers[best_idx];
-            return true;
-        }
-        return false;
-    }
-
-    bool computeCircleFromTwoPoints(const Point2f& p1, const Point2f& p2, float delta_angle_rad,
-                                    Point2f& center, float& radius) {
-        float cos_a = cos(delta_angle_rad);
-        float sin_a = sin(delta_angle_rad);
-        float a = 1 - cos_a;
-        float b = sin_a;
-        float c = p2.x - p1.x * cos_a + p1.y * sin_a;
-        float d = p2.y - p1.x * sin_a - p1.y * cos_a;
-        float denom = a * a + b * b;
-        if (fabs(denom) < 1e-6) return false;
-        center.x = (a * c - b * d) / denom;
-        center.y = (a * d + b * c) / denom;
-        if (isOneRun_) {
-            center.x = (center.x + temp_center_.x) / 2.0f;
-            center.y = (center.y + temp_center_.y) / 2.0f;
-            //isOneRun_ = false;   // 只平滑一次
-        }
-        radius = norm(p1 - center);
-        return (radius > cfg_.min_radius_px && radius < cfg_.max_radius_px);
-    }
-
-    bool isCenterJump(const Point2f& old_center, const Point2f& new_center) {
-        return norm(old_center - new_center) > cfg_.jump_threshold_px;
-    }
-
-    void predictAllBlades(vector<EnergyBlade>& blades) {
-        blades.clear();
-        if (!model_initialized_ || radius_px_ <= 0) return;
-        float angle_step = 2 * M_PI / cfg_.num_blades;
-        for (int i = 0; i < cfg_.num_blades; ++i) {
-            float angle = blade0_angle_rad_ + i * angle_step;
-            EnergyBlade blade;
-            blade.center = Point2f(circle_center_.x + radius_px_ * cos(angle),
-                                   circle_center_.y + radius_px_ * sin(angle));
-            // 围绕中心生成一个边长为 11.4 像素的正方形（偏移 ±5.7）
-            blade.object_points[0] = Point2f(blade.center.x  , blade.center.y - 120.0f);
-            blade.object_points[1] = Point2f(blade.center.x - 120.0f, blade.center.y );
-            blade.object_points[2] = Point2f(blade.center.x , blade.center.y + 120.0f);
-            blade.object_points[3] = Point2f(blade.center.x + 120.0f, blade.center.y );
-            blade.id = i;
-            blade.angle_rad = angle;
-            blades.push_back(blade);
-        }
-    }
-};
-
-// ==================== 基于形态学特征的扇叶中心检测（无模型） ====================
-
-vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
+vector<Point2f> detectBladeCentersHSV(const Mat& bgr) {
     vector<Point2f> centers;
     if (bgr.empty()) return centers;
 
@@ -224,25 +45,26 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
     cvtColor(bgr, hsv, COLOR_BGR2HSV);
     Mat mask;
     Mat mask1, mask2;
-    inRange(hsv, Scalar(0, 80, 80), Scalar(40, 255, 255), mask1);
-    inRange(hsv, Scalar(140, 80, 80), Scalar(180, 255, 255), mask2);
+    // 红色范围（可根据实际调整）
+    inRange(hsv, Scalar(0, 80, 80), Scalar(60, 255, 255), mask1);
+    inRange(hsv, Scalar(120, 80, 80), Scalar(180, 255, 255), mask2);
     mask = mask1 | mask2;
 
-    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(9, 9));
     morphologyEx(mask, mask, MORPH_CLOSE, kernel);
     morphologyEx(mask, mask, MORPH_OPEN, kernel);
 
-    // 显示掩膜（调试）
-    Mat mask_disp;
-    cv::resize(mask, mask_disp, cv::Size(960,540));
-    imshow("mask", mask_disp);
+    // 可选显示掩膜（调试）
+    // Mat mask_disp;
+    // resize(mask, mask_disp, Size(960,540));
+    // imshow("mask", mask_disp);
 
     vector<vector<Point>> contours;
     findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
     for (const auto& cnt : contours) {
         double area = contourArea(cnt);
-        if (area < 10000 || area > 40000) continue;
+        if (area < 8000 || area > 50000) continue;  // 根据实际情况调整
 
         RotatedRect rect = minAreaRect(cnt);
         float rect_area = rect.size.width * rect.size.height;
@@ -253,7 +75,7 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
         float w = rect.size.width;
         float h = rect.size.height;
         float ratio = min(w, h) / max(w, h);
-        if (ratio > 0.65) continue;
+        if (ratio > 0.65) continue;  // 细长
 
         double perimeter = arcLength(cnt, true);
         double circularity = 4 * CV_PI * area / (perimeter * perimeter);
@@ -273,6 +95,143 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
     return centers;
 }
 
+// ==================== 基于HSV的R标（中心圆）检测 ====================
+
+bool detectRCenterHSV(const Mat& bgr, Point2f& center, float& radius, float min_radius, float max_radius) {
+    if (bgr.empty()) {
+        std::cout <<"bgr nothing!"<<std::endl;
+        return false;
+    }
+    Mat hsv;
+    cvtColor(bgr, hsv, COLOR_BGR2HSV);
+    Mat mask;
+    Mat mask1, mask2;
+    // 提取红色区域（与扇叶相同颜色范围）
+    inRange(hsv, Scalar(0, 80, 80), Scalar(30, 255, 255), mask1);
+    inRange(hsv, Scalar(150, 80, 80), Scalar(180, 255, 255), mask2);
+    mask = mask1 | mask2;
+
+    // 形态学去除噪点
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
+    morphologyEx(mask, mask, MORPH_CLOSE, kernel);
+    morphologyEx(mask, mask, MORPH_OPEN, kernel);
+
+    // Mat mask_disp;
+    // resize(mask, mask_disp, Size(960,540));
+    // imshow("mask", mask_disp);
+
+    vector<vector<Point>> contours;
+    
+    findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    
+    // int i = 1;
+    // Mat bgr_clone = bgr;
+    //     for(auto contour : contours){
+    //     cv::RotatedRect rect = cv::minAreaRect(contour);
+    //     cv::circle(bgr_clone,rect.center,2,cv::Scalar(0,255,0));
+    //     cv::putText(bgr_clone,std::to_string(i),rect.center + cv::Point2f(10, -10),
+    //                 cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+    //     std::cout <<i<<"] size: "<<contour.size()<<std::endl;
+    //     std::cout <<i<<"] area: "<<contourArea(contour)<<std::endl;
+    //     std::cout <<i<<"] position: "<< rect.center<<std::endl;
+    //     std::cout <<i<<"] height-width: "<<rect.size.height <<" "<<rect.size.width << std::endl;
+    //     i++;
+    //             }
+    // cv::resize(bgr_clone,bgr_clone,Size(960, 540));
+    // imshow("bgr_debug", bgr_clone);
+
+    // 筛选圆形轮廓（近似圆形）
+    //int j = 0;
+    for (const auto& cnt : contours) {
+        //j++;
+        double area = contourArea(cnt);
+        if (area < 1100 || area > 1300) {
+            //std::cout <<"one!"<<std::endl;
+            continue;  // 中心圆面积范围
+        }
+        RotatedRect rect = minAreaRect(cnt);
+        float w = rect.size.width;
+        float h = rect.size.height;
+        float ratio = min(w, h) / max(w, h);
+        if (ratio < 0.70) {
+            //std::cout <<"two!"<<std::endl;
+            continue;   // 应接近圆形
+        }
+        double perimeter = arcLength(cnt, true);
+        double circularity = 4 * CV_PI * area / (perimeter * perimeter);
+        if (circularity < 0.30) {
+            //std::cout <<"three!"<<std::endl;
+            continue;  // 圆形度要求较高
+        }
+        // 计算圆心和半径（使用最小外接圆或质心+平均半径）
+        Point2f cnt_center;
+        float cnt_radius;
+        minEnclosingCircle(cnt, cnt_center, cnt_radius);
+        //td::cout <<"[Debug] cnt_radius: "<<cnt_radius <<std::endl;
+        if (cnt_radius >= min_radius && cnt_radius <= max_radius) {
+            //std::cout <<"success! "<<std::endl;
+            center = cnt_center;
+            radius = cnt_radius;
+            return true;
+        }
+    }
+    return false;
+}
+
+void showBladesROI(const Mat& src, const vector<Point2f>& blade_centers, int roi_size = 80) {
+    if (blade_centers.empty()) {
+        // 清空窗口
+        Mat empty(80, 80, CV_8UC3, Scalar(0,0,0));
+        imshow("Detected Blades ROI", empty);
+        return;
+    }
+    
+    // 每个ROI的大小
+    int roi_w = roi_size;
+    int roi_h = roi_size;
+    
+    // 计算需要多少行/列来显示所有扇叶（每行最多3个）
+    int cols = min(3, (int)blade_centers.size());
+    int rows = (blade_centers.size() + cols - 1) / cols;
+    
+    // 创建一张白底大图，用于拼接所有ROI
+    Mat canvas(rows * roi_h, cols * roi_w, src.type(), Scalar(255,255,255));
+    
+    for (size_t i = 0; i < blade_centers.size(); ++i) {
+        int x = (int)blade_centers[i].x;
+        int y = (int)blade_centers[i].y;
+        // 提取ROI区域（边界检查）
+        int half = roi_size / 2;
+        Rect roi_rect(max(0, x - half), max(0, y - half), roi_size, roi_size);
+        // 如果超出图像边界，进行裁剪
+        roi_rect &= Rect(0, 0, src.cols, src.rows);
+        if (roi_rect.width <= 0 || roi_rect.height <= 0) continue;
+        
+        Mat roi_img = src(roi_rect);
+        // 缩放至统一大小（若边界导致尺寸不同，再resize）
+        Mat resized;
+        if (roi_img.size() != Size(roi_w, roi_h)) {
+            resize(roi_img, resized, Size(roi_w, roi_h));
+        } else {
+            resized = roi_img.clone();
+        }
+        
+        // 在ROI图像上绘制扇叶中心十字标记
+        Point2f center_in_roi(roi_w/2.0f, roi_h/2.0f);
+        circle(resized, center_in_roi, 3, Scalar(0,0,255), 1);
+        line(resized, Point(center_in_roi.x-5, center_in_roi.y), Point(center_in_roi.x+5, center_in_roi.y), Scalar(0,255,0), 1);
+        line(resized, Point(center_in_roi.x, center_in_roi.y-5), Point(center_in_roi.x, center_in_roi.y+5), Scalar(0,255,0), 1);
+        
+        // 计算在画布中的位置
+        int row = i / cols;
+        int col = i % cols;
+        Rect canvas_rect(col * roi_w, row * roi_h, roi_w, roi_h);
+        resized.copyTo(canvas(canvas_rect));
+    }
+    
+    imshow("Detected Blades ROI", canvas);
+}
+
 // ========================== 主程序 ==========================
 
 int main() {
@@ -283,62 +242,207 @@ int main() {
         return -1;
     }
 
-    EnergyDetectorConfig cfg;
+    EnergyDetectorConfig cfg;  // 保留原有配置（本次未直接使用）
     cfg.num_blades = 5;
     cfg.angular_velocity_deg = 60.0f;
-    cfg.jump_threshold_px = 15.0f;
-    cfg.min_radius_px = 50.0f;
+    cfg.jump_threshold_px = 10.0f;
+    cfg.min_radius_px = 160.0f;
     cfg.max_radius_px = 300.0f;
     cfg.max_track_lost_frames = 5;
-    cfg.max_match_distance_ratio = 0.4f;
+    cfg.max_match_distance_ratio = 0.3f;
+    cfg.r_center_weight = 0.9f;
 
-    EnergyDetector detector(cfg);
+    // 用于平滑显示的缓存
+    Point2f smoothed_center(0, 0);
+    float smoothed_radius = 0;
+    float temp_radius = 0;
+    bool first_frame = true;
+
+    // ===== 自主运动相关变量 =====
+    double last_timestamp = 0;          // 上一帧时间戳
+    float last_ref_angle = 0;           // 上一次的参考角度（弧度）
+    bool has_ref_angle = false;         // 是否已有参考角度
+    float predicted_ref_angle = 0;      // 预测的参考角度（用于无检测时）
+
+    namedWindow("Detected Blades ROI", WINDOW_NORMAL);
+    resizeWindow("Detected Blades ROI", 320, 240);
 
     Mat frame;
     while (true) {
         cap >> frame;
         if (frame.empty()) break;
 
-        vector<Point2f> blade_centers = detectBladeCentersMorph(frame);
-        vector<EnergyBlade> predicted_blades;
-        detector.process(blade_centers, predicted_blades);
+        // 获取当前时间戳（秒）
+        double now = chrono::duration<double>(chrono::steady_clock::now().time_since_epoch()).count();
+        double dt = 0.0;
+        if (last_timestamp > 0) {
+            dt = now - last_timestamp;
+            if (dt > 0.1) dt = 0.033; // 限制最大间隔
+        }
+        last_timestamp = now;
 
-        Mat display = frame.clone();
+        // 1. 实时检测扇叶中心和R标
+        vector<Point2f> blade_centers = detectBladeCentersHSV(frame);
+        Point2f r_center;
+        float r_radius;
+        bool r_found = detectRCenterHSV(frame, r_center, r_radius, 10, 35);
 
-        // 绘制检测到的扇叶中心（红色）
-        for (const auto& pt : blade_centers) {
-            circle(display, pt, 5, Scalar(0, 0, 255), -1);
+        // 2. 模型构建：圆心直接使用R标检测结果
+        Point2f model_center = r_center;
+        bool model_valid = r_found;
+
+        // 计算半径：若有扇叶点，则用圆心到扇叶点的平均距离作为半径；否则使用R标本身的半径
+        float model_radius = 0;
+        if (model_valid && !blade_centers.empty()) {
+            float sum_dist = 0;
+            for (const auto& blade : blade_centers) {
+                sum_dist += norm(blade - model_center);
+            }
+            model_radius = sum_dist / blade_centers.size();
+            model_radius *= 1.1;
+            temp_radius = model_radius;
+        } else if (r_found) {
+            model_radius = (temp_radius > 0) ? temp_radius : r_radius;  // 后备：使用R标自身的半径
         }
 
-        if (detector.isModelInitialized()) {
-            Point2f center = detector.getCircleCenter();
-            float radius = detector.getRadius();
-            circle(display, center, radius + 2, Scalar(255, 0, 0), 2);
-            circle(display, center, 5, Scalar(255, 0, 0), -1);
-            for (const auto& blade : predicted_blades) {
-                // 绘制正方形边框
-                for (int i = 0; i < 4; ++i) {
-                    cv::line(display, blade.object_points[i], blade.object_points[(i+1)%4], Scalar(0, 0, 255), 2);
-                }
-                circle(display, blade.center, 5, Scalar(0, 255, 0), -1);
+        // 3. 平滑圆心和半径
+        if (first_frame) {
+            smoothed_center = model_center;
+            smoothed_radius = model_radius;
+            first_frame = false;
+        } else {
+            if (model_valid) {
+                smoothed_center = CENTER_SMOOTH * model_center + (1 - CENTER_SMOOTH) * smoothed_center;
+                smoothed_radius = RADIUS_SMOOTH * model_radius + (1 - RADIUS_SMOOTH) * smoothed_radius;
             }
         }
 
-        putText(display, "Energy Detector (Morph)", Point(30, 30),
-                FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255), 2);
-        string status = detector.isModelInitialized() ? "MODEL OK" : "MODEL WAITING";
-        putText(display, status, Point(30, 60), FONT_HERSHEY_SIMPLEX, 0.6,
-                detector.isModelInitialized() ? Scalar(0, 255, 0) : Scalar(0, 0, 255), 2);
-        putText(display, "Blades: " + to_string(blade_centers.size()), Point(30, 90),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
-        if (detector.isModelInitialized()) {
-            putText(display, "Radius: " + to_string((int)detector.getRadius()), Point(30, 120),
-                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
+        // 用于可视化的圆心和半径
+        Point2f vis_center = smoothed_center;
+        float vis_radius = smoothed_radius;
+        if (!model_valid) {
+            // 如果没有检测到R标，则保留上一帧的圆心（平滑值），半径不变
+            // vis_center 已经是 smoothed_center，无需额外处理
         }
-        cv::resize(display, display, cv::Size(960, 540));
+
+        // 4. 参考角度的更新（用于扇叶预测）
+        float ref_angle = 0;
+        bool have_blade = !blade_centers.empty();
+
+        if (have_blade && model_valid) {
+            // 有检测到的扇叶时：用第一个扇叶相对于当前圆心的角度作为参考
+            float dx = blade_centers[0].x - vis_center.x;
+            float dy = blade_centers[0].y - vis_center.y;
+            float measured_angle = atan2(dy, dx);
+            // 平滑过渡：若已有参考角度，则进行加权融合，避免跳变
+            if (has_ref_angle) {
+                float angle_diff = measured_angle - last_ref_angle;
+                // 规范化角度差到 [-pi, pi]
+                if (angle_diff > M_PI) angle_diff -= 2*M_PI;
+                if (angle_diff < -M_PI) angle_diff += 2*M_PI;
+                measured_angle = last_ref_angle + ANGLE_SMOOTH * angle_diff;
+            }
+            ref_angle = measured_angle;
+            last_ref_angle = ref_angle;
+            has_ref_angle = true;
+            predicted_ref_angle = ref_angle; // 同步预测值
+        } else if (has_ref_angle) {
+            // 没有检测到扇叶但有历史角度：根据恒定角速度自行运动
+            float angular_vel_rad = cfg.angular_velocity_deg * M_PI / 180.0f;
+            predicted_ref_angle += angular_vel_rad * dt;
+            // 规范化到 [-pi, pi]
+            if (predicted_ref_angle > M_PI) predicted_ref_angle -= 2*M_PI;
+            if (predicted_ref_angle < -M_PI) predicted_ref_angle += 2*M_PI;
+            ref_angle = predicted_ref_angle;
+            last_ref_angle = ref_angle; // 更新参考角度，使下次检测时能平滑融合
+        } else {
+            // 从未检测到任何扇叶，使用默认角度0
+            ref_angle = 0;
+        }
+
+        // 5. 可视化
+        Mat display = frame.clone();
+
+        // 绘制所有检测到的扇叶中心（红色圆点）
+        for (const auto& pt : blade_centers) {
+            circle(display, pt, 5, Scalar(0, 0, 255), -1);
+        }
+        // 绘制R标（蓝色圆心）
+        if (r_found) {
+            circle(display, r_center, r_radius, Scalar(255, 0, 0), 2);
+            circle(display, r_center, 3, Scalar(255, 0, 0), -1);
+            putText(display, "R-Center", r_center + Point2f(10, -10), FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 0, 0), 1);
+        }
+
+        // 绘制完整模型（圆心、半径、5个预测扇叶）
+        if (vis_radius > 0 && has_ref_angle) {
+            // 绘制圆心
+            circle(display, vis_center, 5, Scalar(0, 255, 0), -1);
+            putText(display, "Model Center", vis_center + Point2f(10, -10), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+
+            // 预测并绘制完整的五个扇叶
+            float angle_step = 2 * M_PI / cfg.num_blades;
+            for (int i = 0; i < cfg.num_blades; ++i) {
+                float angle = ref_angle + i * angle_step;
+                Point2f predicted_blade(vis_center.x + vis_radius * cos(angle),
+                                        vis_center.y + vis_radius * sin(angle));
+
+                // 绘制扇叶主体（四个边角点，模拟一个十字形或矩形）
+                Point2f blade_points[4];
+                Point2f blade_to_points[4];
+                float blade_size = 110.0f;
+                blade_points[0] = Point2f(predicted_blade.x, predicted_blade.y - blade_size);
+                blade_points[1] = Point2f(predicted_blade.x - blade_size, predicted_blade.y);
+                blade_points[2] = Point2f(predicted_blade.x, predicted_blade.y + blade_size);
+                blade_points[3] = Point2f(predicted_blade.x + blade_size, predicted_blade.y);
+                
+                blade_to_points[0] = Point2f(predicted_blade.x - 20.0f, predicted_blade.y - blade_size);
+                blade_to_points[1] = Point2f(predicted_blade.x - blade_size - 20.0f, predicted_blade.y);
+                blade_to_points[2] = Point2f(predicted_blade.x - 20.0f, predicted_blade.y + blade_size);
+                blade_to_points[3] = Point2f(predicted_blade.x + blade_size - 20.0f, predicted_blade.y);
+
+                for (int j = 0; j < 4; ++j) {
+                    line(display, blade_points[j], blade_points[(j+1)%4], Scalar(0, 0, 255), 2);
+                }
+                for (int j = 0; j < 4; ++j) {
+                    line(display, blade_to_points[j], blade_to_points[(j+1)%4], Scalar(0, 0, 255), 2);
+                }
+                for (int j = 0; j < 4; ++j) {
+                    line(display, blade_points[j], blade_to_points[j], Scalar(0, 0, 255), 2);
+                }
+                // 绘制扇叶中心点（绿色）
+                circle(display, predicted_blade, 5, Scalar(0, 255, 0), -1);
+                // 连线到圆心
+                line(display, vis_center, predicted_blade, Scalar(255, 100, 100), 1);
+            }
+        } else if (model_valid && vis_radius <= 0 && !blade_centers.empty()) {
+            // 半径未知时，仅用检测到的扇叶连线
+            for (const auto& blade : blade_centers) {
+                line(display, vis_center, blade, Scalar(0, 255, 255), 1);
+            }
+        }
+
+        // 文字提示
+        putText(display, "Energy Detector (Autonomous Motion)", Point(30, 30),
+                FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 255, 255), 2);
+        putText(display, "Blades detected: " + to_string(blade_centers.size()), Point(30, 60),
+                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
+        if (r_found) {
+            putText(display, "RCenter detected", Point(30, 90),
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+        }
+        if (has_ref_angle) {
+            putText(display, "Model radius: " + to_string((int)vis_radius), Point(30, 120),
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+        }
+
+        resize(display, display, Size(960, 540));
         imshow("Energy Detection", display);
-        if (waitKey(20) == 'q') break;
+
+        showBladesROI(frame, blade_centers, 80);
+
+        if (waitKey(10) == 'q') break;
     }
-    cv::destroyAllWindows();
+    destroyAllWindows();
     return 0;
 }
