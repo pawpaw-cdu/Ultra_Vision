@@ -19,9 +19,9 @@ struct EnergyBlade {
 struct EnergyDetectorConfig {
     float angular_velocity_deg = 60.0f;   // 恒定角速度 (度/秒)
     int num_blades = 5;                   // 扇叶数量
-    float jump_threshold_px = 15.0f;      // 圆心跳变阈值 (像素)
-    float min_radius_px = 50.0f;          // 最小半径 (像素)
-    float max_radius_px = 300.0f;         // 最大半径 (像素)
+    float jump_threshold_px = 20.0f;      // 圆心跳变阈值 (像素)
+    float min_radius_px = 30.0f;          // 最小半径 (像素)
+    float max_radius_px = 350.0f;         // 最大半径 (像素)
     int max_track_lost_frames = 5;        // 最大丢失帧数
     float max_match_distance_ratio = 0.4f; // 匹配同一扇叶的最大距离系数 (半径的倍数)
 };
@@ -203,47 +203,69 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
     Mat mask;
     // 红色范围（可微调）
     Mat mask1, mask2;
-    inRange(hsv, Scalar(0, 50, 50), Scalar(10, 255, 255), mask1);
-    inRange(hsv, Scalar(160, 50, 50), Scalar(180, 255, 255), mask2);
+    inRange(hsv, Scalar(0, 50, 50), Scalar(30, 255, 255), mask1);
+    inRange(hsv, Scalar(150, 50, 50), Scalar(180, 255, 255), mask2);
     mask = mask1 | mask2;
+    
 
     // 形态学闭运算连接断裂区域，开运算去除噪点
     Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
     morphologyEx(mask, mask, MORPH_CLOSE, kernel);
     morphologyEx(mask, mask, MORPH_OPEN, kernel);
+    Mat mask_clone;
+    cv::resize(mask, mask_clone, cv::Size(960,540));
+    imshow("mask",mask_clone);
 
     vector<vector<Point>> contours;
     findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-
+    int i = 1;
     for (const auto& cnt : contours) {
         // 面积筛选
+        RotatedRect rect = minAreaRect(cnt);
         double area = contourArea(cnt);
-        if (area < 150 || area > 2000) continue;
+
+        // Mat bgr_clone = bgr;
+        // cv::circle(bgr_clone,rect.center,2,cv::Scalar(0,255,0));
+        // cv::putText(bgr_clone,std::to_string(i),rect.center + cv::Point2f(10, -10),
+        //             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+        // std::cout <<i<<"] size: "<<cnt.size()<<std::endl;
+        // std::cout <<i<<"] position: "<< rect.center<<std::endl;
+        // std::cout <<i<<"] height-width: "<<rect.size.height <<" "<<rect.size.width << std::endl;
+        // std::cout <<i<<"] area: "<<area<<std::endl;
+        i++;
+
+        
+        if (area < 10000 || area > 50000) continue;
 
         // 矩形度 (轮廓面积 / 最小外接矩形面积)
-        RotatedRect rect = minAreaRect(cnt);
+        
+        //cv::imshow("contour_bgr",bgr_clone);
         float rect_area = rect.size.width * rect.size.height;
         if (rect_area <= 0) continue;
         double rectangularity = area / rect_area;
         if (rectangularity < 0.5) continue;
+        std::cout <<i-1<<"] one!"<<std::endl;
 
         // 长宽比 (扇叶细长)
         float w = rect.size.width;
         float h = rect.size.height;
         float ratio = min(w, h) / max(w, h);
-        if (ratio > 0.45) continue;
+        if (ratio > 0.60) continue;
+        std::cout <<i-1<<"] two"<<std::endl;
 
         // 圆形度 (扇叶不应是圆形)
         double perimeter = arcLength(cnt, true);
         double circularity = 4 * CV_PI * area / (perimeter * perimeter);
         if (circularity > 0.4) continue;
+        std::cout <<i-1<<"] three"<<std::endl;
 
         // 凸度 (area / hull_area)
         vector<Point> hull;
         convexHull(cnt, hull);
         double hull_area = contourArea(hull);
         double solidity = area / hull_area;
-        if (solidity < 0.7) continue;
+        if (solidity < 0.45) continue;
+        std::cout <<i-1<<"] four"<<std::endl;
 
         // 计算质心
         Moments m = moments(cnt);
@@ -251,13 +273,14 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
             centers.push_back(Point2f(m.m10 / m.m00, m.m01 / m.m00));
         }
     }
+    std::cout <<"center: "<<centers<<std::endl;
     return centers;
 }
 
 // ========================== 主程序 ==========================
 
 int main() {
-    string video_path = "/home/pawpaw-ubuntu/rm_ultra/test_vid_pic/buff.mp4";
+    string video_path = "/home/pawpaw-ubuntu/rm_ultra/test_vid_pic/buff_three.mp4";
     VideoCapture cap(video_path);
     if (!cap.isOpened()) {
         cerr << "Error: Cannot open video file " << video_path << endl;
@@ -278,9 +301,13 @@ int main() {
 
     Mat frame;
     int frame_idx = 0;
+    int i = 1;
     while (true) {
+        
         cap >> frame;
         if (frame.empty()) break;
+        std::cout<<i<<"] image"<<std::endl;
+        i++;
 
         // 使用形态学特征检测扇叶中心
         vector<Point2f> blade_centers = detectBladeCentersMorph(frame);
@@ -298,7 +325,9 @@ int main() {
         }
 
         // 绘制模型信息
+        std::cout << "mode: " << detector.isModelInitialized()<<std::endl;
         if (detector.isModelInitialized()) {
+            std::cout<<"success!"<<std::endl;
             Point2f center = detector.getCircleCenter();
             float radius = detector.getRadius();
             circle(display, center, radius, Scalar(255, 0, 0), 2);
@@ -315,16 +344,17 @@ int main() {
         putText(display, status, Point(30, 60), FONT_HERSHEY_SIMPLEX, 0.6,
                 detector.isModelInitialized() ? Scalar(0, 255, 0) : Scalar(0, 0, 255), 2);
         putText(display, "Blades: " + to_string(blade_centers.size()), Point(30, 90),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
         if (detector.isModelInitialized()) {
             putText(display, "Radius: " + to_string((int)detector.getRadius()), Point(30, 120),
-                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
         }
-
+        cv::resize(display,display,cv::Size(960,540));
+        //std::cout <<"size: "<<display.size()<<std::endl;
         imshow("Energy Detection", display);
-        if (waitKey(30) == 'q') break;
+        if (waitKey(0) == 'q') break;
         frame_idx++;
     }
-
+    cv::destroyAllWindows();
     return 0;
 }
