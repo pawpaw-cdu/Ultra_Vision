@@ -14,6 +14,7 @@ struct EnergyBlade {
     cv::Point2f center;
     int id;
     float angle_rad;
+    cv::Point2f object_points[4];   // 存储四个边角点（正方形）
 };
 
 struct EnergyDetectorConfig {
@@ -36,11 +37,13 @@ public:
         prev_center_ = Point2f(0, 0);
         current_center_ = Point2f(0, 0);
         circle_center_ = Point2f(0, 0);
+        temp_center_ = Point2f(0, 0);
         radius_px_ = 0;
         blade0_angle_rad_ = 0;
         last_timestamp_ = 0;
         lost_frame_count_ = 0;
         model_initialized_ = false;
+        isOneRun_ = false;
     }
 
     bool process(const vector<Point2f>& blade_centers, vector<EnergyBlade>& predicted_blades) {
@@ -50,20 +53,29 @@ public:
         // 未初始化模型
         if (!model_initialized_) {
             if (last_timestamp_ == 0 && !blade_centers.empty()) {
-                // 第一帧：暂存第一个扇叶中心
                 prev_center_ = blade_centers[0];
                 last_timestamp_ = now;
                 return false;
             }
             else if (last_timestamp_ != 0 && !blade_centers.empty()) {
-                Point2f matched;
-                if (findSameBlade(blade_centers, matched)) {
-                    current_center_ = matched;
+                float min_dist = 1e6;
+                int best_idx = -1;
+                for (size_t i = 0; i < blade_centers.size(); ++i) {
+                    float dist = norm(blade_centers[i] - prev_center_);
+                    if (dist < min_dist) {
+                        min_dist = dist;
+                        best_idx = i;
+                    }
+                }
+                if (best_idx != -1 && min_dist < 100.0f) {
+                    current_center_ = blade_centers[best_idx];
                     double dt = now - last_timestamp_;
                     if (dt < 1e-6) return false;
                     float delta_angle = cfg_.angular_velocity_deg * M_PI / 180.0f * dt;
                     if (computeCircleFromTwoPoints(prev_center_, current_center_, delta_angle,
                                                    circle_center_, radius_px_)) {
+                        isOneRun_ = true;
+                        temp_center_ = circle_center_;
                         blade0_angle_rad_ = atan2(prev_center_.y - circle_center_.y,
                                                   prev_center_.x - circle_center_.x);
                         model_initialized_ = true;
@@ -72,7 +84,6 @@ public:
                         return true;
                     }
                 }
-                // 初始化失败，重置第一帧
                 last_timestamp_ = now;
                 if (!blade_centers.empty()) prev_center_ = blade_centers[0];
                 return false;
@@ -125,12 +136,13 @@ public:
 
 private:
     EnergyDetectorConfig cfg_;
-    Point2f prev_center_, current_center_, circle_center_;
+    Point2f prev_center_, current_center_, circle_center_, temp_center_;
     float radius_px_;
     float blade0_angle_rad_;
     double last_timestamp_;
     int lost_frame_count_;
     bool model_initialized_;
+    bool isOneRun_;
 
     double getTimestamp() {
         auto now = chrono::steady_clock::now();
@@ -168,6 +180,11 @@ private:
         if (fabs(denom) < 1e-6) return false;
         center.x = (a * c - b * d) / denom;
         center.y = (a * d + b * c) / denom;
+        if (isOneRun_) {
+            center.x = (center.x + temp_center_.x) / 2.0f;
+            center.y = (center.y + temp_center_.y) / 2.0f;
+            //isOneRun_ = false;   // 只平滑一次
+        }
         radius = norm(p1 - center);
         return (radius > cfg_.min_radius_px && radius < cfg_.max_radius_px);
     }
@@ -185,6 +202,11 @@ private:
             EnergyBlade blade;
             blade.center = Point2f(circle_center_.x + radius_px_ * cos(angle),
                                    circle_center_.y + radius_px_ * sin(angle));
+            // 围绕中心生成一个边长为 11.4 像素的正方形（偏移 ±5.7）
+            blade.object_points[0] = Point2f(blade.center.x  , blade.center.y - 120.0f);
+            blade.object_points[1] = Point2f(blade.center.x - 120.0f, blade.center.y );
+            blade.object_points[2] = Point2f(blade.center.x , blade.center.y + 120.0f);
+            blade.object_points[3] = Point2f(blade.center.x + 120.0f, blade.center.y );
             blade.id = i;
             blade.angle_rad = angle;
             blades.push_back(blade);
@@ -201,79 +223,53 @@ vector<Point2f> detectBladeCentersMorph(const Mat& bgr) {
     Mat hsv;
     cvtColor(bgr, hsv, COLOR_BGR2HSV);
     Mat mask;
-    // 红色范围（可微调）
     Mat mask1, mask2;
-    inRange(hsv, Scalar(0, 50, 50), Scalar(30, 255, 255), mask1);
-    inRange(hsv, Scalar(150, 50, 50), Scalar(180, 255, 255), mask2);
+    inRange(hsv, Scalar(0, 80, 80), Scalar(40, 255, 255), mask1);
+    inRange(hsv, Scalar(140, 80, 80), Scalar(180, 255, 255), mask2);
     mask = mask1 | mask2;
-    
 
-    // 形态学闭运算连接断裂区域，开运算去除噪点
-    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
     morphologyEx(mask, mask, MORPH_CLOSE, kernel);
     morphologyEx(mask, mask, MORPH_OPEN, kernel);
-    Mat mask_clone;
-    cv::resize(mask, mask_clone, cv::Size(960,540));
-    imshow("mask",mask_clone);
+
+    // 显示掩膜（调试）
+    Mat mask_disp;
+    cv::resize(mask, mask_disp, cv::Size(960,540));
+    imshow("mask", mask_disp);
 
     vector<vector<Point>> contours;
     findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-    int i = 1;
+
     for (const auto& cnt : contours) {
-        // 面积筛选
-        RotatedRect rect = minAreaRect(cnt);
         double area = contourArea(cnt);
+        if (area < 10000 || area > 40000) continue;
 
-        // Mat bgr_clone = bgr;
-        // cv::circle(bgr_clone,rect.center,2,cv::Scalar(0,255,0));
-        // cv::putText(bgr_clone,std::to_string(i),rect.center + cv::Point2f(10, -10),
-        //             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-        // std::cout <<i<<"] size: "<<cnt.size()<<std::endl;
-        // std::cout <<i<<"] position: "<< rect.center<<std::endl;
-        // std::cout <<i<<"] height-width: "<<rect.size.height <<" "<<rect.size.width << std::endl;
-        // std::cout <<i<<"] area: "<<area<<std::endl;
-        i++;
-
-        
-        if (area < 10000 || area > 50000) continue;
-
-        // 矩形度 (轮廓面积 / 最小外接矩形面积)
-        
-        //cv::imshow("contour_bgr",bgr_clone);
+        RotatedRect rect = minAreaRect(cnt);
         float rect_area = rect.size.width * rect.size.height;
         if (rect_area <= 0) continue;
         double rectangularity = area / rect_area;
         if (rectangularity < 0.5) continue;
-        std::cout <<i-1<<"] one!"<<std::endl;
 
-        // 长宽比 (扇叶细长)
         float w = rect.size.width;
         float h = rect.size.height;
         float ratio = min(w, h) / max(w, h);
-        if (ratio > 0.60) continue;
-        std::cout <<i-1<<"] two"<<std::endl;
+        if (ratio > 0.65) continue;
 
-        // 圆形度 (扇叶不应是圆形)
         double perimeter = arcLength(cnt, true);
         double circularity = 4 * CV_PI * area / (perimeter * perimeter);
-        if (circularity > 0.4) continue;
-        std::cout <<i-1<<"] three"<<std::endl;
+        if (circularity > 0.5) continue;
 
-        // 凸度 (area / hull_area)
         vector<Point> hull;
         convexHull(cnt, hull);
         double hull_area = contourArea(hull);
         double solidity = area / hull_area;
-        if (solidity < 0.45) continue;
-        std::cout <<i-1<<"] four"<<std::endl;
+        if (solidity < 0.5) continue;
 
-        // 计算质心
         Moments m = moments(cnt);
         if (m.m00 > 0) {
             centers.push_back(Point2f(m.m10 / m.m00, m.m01 / m.m00));
         }
     }
-    std::cout <<"center: "<<centers<<std::endl;
     return centers;
 }
 
@@ -287,7 +283,6 @@ int main() {
         return -1;
     }
 
-    // 配置能量机关检测器
     EnergyDetectorConfig cfg;
     cfg.num_blades = 5;
     cfg.angular_velocity_deg = 60.0f;
@@ -300,44 +295,35 @@ int main() {
     EnergyDetector detector(cfg);
 
     Mat frame;
-    int frame_idx = 0;
-    int i = 1;
     while (true) {
-        
         cap >> frame;
         if (frame.empty()) break;
-        std::cout<<i<<"] image"<<std::endl;
-        i++;
 
-        // 使用形态学特征检测扇叶中心
         vector<Point2f> blade_centers = detectBladeCentersMorph(frame);
-
-        // 调用能量机关检测器
         vector<EnergyBlade> predicted_blades;
-        bool ok = detector.process(blade_centers, predicted_blades);
+        detector.process(blade_centers, predicted_blades);
 
-        // 可视化
         Mat display = frame.clone();
 
-        // 绘制检测到的扇叶中心（红色圆点）
+        // 绘制检测到的扇叶中心（红色）
         for (const auto& pt : blade_centers) {
             circle(display, pt, 5, Scalar(0, 0, 255), -1);
         }
 
-        // 绘制模型信息
-        std::cout << "mode: " << detector.isModelInitialized()<<std::endl;
         if (detector.isModelInitialized()) {
-            std::cout<<"success!"<<std::endl;
             Point2f center = detector.getCircleCenter();
             float radius = detector.getRadius();
-            circle(display, center, radius, Scalar(255, 0, 0), 2);
+            circle(display, center, radius + 2, Scalar(255, 0, 0), 2);
             circle(display, center, 5, Scalar(255, 0, 0), -1);
             for (const auto& blade : predicted_blades) {
+                // 绘制正方形边框
+                for (int i = 0; i < 4; ++i) {
+                    cv::line(display, blade.object_points[i], blade.object_points[(i+1)%4], Scalar(0, 0, 255), 2);
+                }
                 circle(display, blade.center, 5, Scalar(0, 255, 0), -1);
             }
         }
 
-        // 文字提示
         putText(display, "Energy Detector (Morph)", Point(30, 30),
                 FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255), 2);
         string status = detector.isModelInitialized() ? "MODEL OK" : "MODEL WAITING";
@@ -349,11 +335,9 @@ int main() {
             putText(display, "Radius: " + to_string((int)detector.getRadius()), Point(30, 120),
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 0, 0), 1);
         }
-        cv::resize(display,display,cv::Size(960,540));
-        //std::cout <<"size: "<<display.size()<<std::endl;
+        cv::resize(display, display, cv::Size(960, 540));
         imshow("Energy Detection", display);
-        if (waitKey(0) == 'q') break;
-        frame_idx++;
+        if (waitKey(20) == 'q') break;
     }
     cv::destroyAllWindows();
     return 0;
