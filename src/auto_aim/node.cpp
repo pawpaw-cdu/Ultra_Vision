@@ -6,12 +6,12 @@
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
 
-#include "common/types.hpp"
+#include "/home/pawpaw-ubuntu/rm_ultra/common/types.hpp"
 #include "perception/detector.hpp"
-#include "tools/visualizer.hpp"
+#include "/home/pawpaw-ubuntu/rm_ultra/tools/visualizer.hpp"
 #include "perception/pnp_solver.hpp"
 #include "Kalman/tracker.hpp"
-#include "io/camera/GalaxyCamera.hpp"
+#include "/home/pawpaw-ubuntu/rm_ultra/io/camera/GalaxyCamera.hpp"
 
 // 辅助函数：从 YAML 节点读取矩阵
 cv::Mat readMatFromYaml(const YAML::Node & node) {

@@ -54,16 +54,16 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test
+CMAKE_SOURCE_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build
+CMAKE_BINARY_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build
 
 #=============================================================================
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/buff_test.dir/all
+all: CMakeFiles/energy_demo.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/buff_test.dir/clean
+clean: CMakeFiles/energy_demo.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/buff_test.dir
+# Target rules for target CMakeFiles/energy_demo.dir
 
 # All Build rule for target.
-CMakeFiles/buff_test.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target buff_test"
-.PHONY : CMakeFiles/buff_test.dir/all
+CMakeFiles/energy_demo.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build/CMakeFiles --progress-num=1,2 "Built target energy_demo"
+.PHONY : CMakeFiles/energy_demo.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/buff_test.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build/CMakeFiles 7
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/buff_test.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build/CMakeFiles 0
-.PHONY : CMakeFiles/buff_test.dir/rule
+CMakeFiles/energy_demo.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/energy_demo.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build/CMakeFiles 0
+.PHONY : CMakeFiles/energy_demo.dir/rule
 
 # Convenience name for target.
-buff_test: CMakeFiles/buff_test.dir/rule
-.PHONY : buff_test
+energy_demo: CMakeFiles/energy_demo.dir/rule
+.PHONY : energy_demo
 
 # clean rule for target.
-CMakeFiles/buff_test.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/clean
-.PHONY : CMakeFiles/buff_test.dir/clean
+CMakeFiles/energy_demo.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/clean
+.PHONY : CMakeFiles/energy_demo.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

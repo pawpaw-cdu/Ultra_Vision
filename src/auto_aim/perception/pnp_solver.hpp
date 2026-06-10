@@ -2,7 +2,7 @@
 #define PNP_SOLVER_HPP
 
 #include <opencv2/opencv.hpp>
-#include "common/types.hpp"
+#include "/home/pawpaw-ubuntu/rm_ultra/common/types.hpp"
 
 namespace auto_aim
 {

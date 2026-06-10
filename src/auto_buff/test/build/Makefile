@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test
+CMAKE_SOURCE_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build
+CMAKE_BINARY_DIR = /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build/CMakeFiles /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build/CMakeFiles /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_buff/test/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pawpaw-ubuntu/rm_ultra/src/auto_aim/test/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -117,161 +117,41 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named buff_test
+# Target rules for targets named energy_demo
 
 # Build rule for target.
-buff_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 buff_test
-.PHONY : buff_test
+energy_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 energy_demo
+.PHONY : energy_demo
 
 # fast build rule for target.
-buff_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/build
-.PHONY : buff_test/fast
+energy_demo/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/build
+.PHONY : energy_demo/fast
 
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.o: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.o
-
-# target to build an object file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.o
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.i: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.i
-
-# target to preprocess a source file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.i
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.s: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.s
-
-# target to generate assembly for a file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.cpp.s
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.o: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.o
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.o: home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.o
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.o
 
 # target to build an object file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.o
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.o
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.o
 
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.i: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.i
-
-# target to preprocess a source file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.i
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.s: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.s
-
-# target to generate assembly for a file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.cpp.s
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.o: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.o
-
-# target to build an object file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.o
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.i: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.i
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.i: home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.i
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.i
 
 # target to preprocess a source file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.i
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.i
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.i
 
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.s: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.s
-
-# target to generate assembly for a file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.cpp.s
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.o: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.o
-
-# target to build an object file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.o
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.i: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.i
-
-# target to preprocess a source file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.i
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.s: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.s
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.s: home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.s
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.s
 
 # target to generate assembly for a file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.cpp.s
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.o: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.o
-
-# target to build an object file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.o
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.o
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.i: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.i
-
-# target to preprocess a source file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.i
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.i
-
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.s: home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.s
-
-# target to generate assembly for a file
-home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.s
-.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.cpp.s
-
-video_test.o: video_test.cpp.o
-.PHONY : video_test.o
-
-# target to build an object file
-video_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/video_test.cpp.o
-.PHONY : video_test.cpp.o
-
-video_test.i: video_test.cpp.i
-.PHONY : video_test.i
-
-# target to preprocess a source file
-video_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/video_test.cpp.i
-.PHONY : video_test.cpp.i
-
-video_test.s: video_test.cpp.s
-.PHONY : video_test.s
-
-# target to generate assembly for a file
-video_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/buff_test.dir/build.make CMakeFiles/buff_test.dir/video_test.cpp.s
-.PHONY : video_test.cpp.s
+home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/energy_demo.dir/build.make CMakeFiles/energy_demo.dir/home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.s
+.PHONY : home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.cpp.s
 
 # Help Target
 help:
@@ -281,25 +161,10 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... buff_test"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.o"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.i"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/base_buff.s"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.o"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.i"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/config.s"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.o"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.i"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/detector_buff.s"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.o"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.i"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/fanblade.s"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.o"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.i"
-	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_buff/src/utils.s"
-	@echo "... video_test.o"
-	@echo "... video_test.i"
-	@echo "... video_test.s"
+	@echo "... energy_demo"
+	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.o"
+	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.i"
+	@echo "... home/pawpaw-ubuntu/rm_ultra/src/auto_aim/energy_node.s"
 .PHONY : help
 
 

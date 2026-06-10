@@ -1,4 +1,0 @@
-/home/pawpaw-ubuntu/rm_ultra/build/CMakeFiles/test.dir
-/home/pawpaw-ubuntu/rm_ultra/build/CMakeFiles/energy_demo.dir
-/home/pawpaw-ubuntu/rm_ultra/build/CMakeFiles/edit_cache.dir
-/home/pawpaw-ubuntu/rm_ultra/build/CMakeFiles/rebuild_cache.dir

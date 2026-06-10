@@ -1,33 +1,47 @@
 cmake_minimum_required(VERSION 3.10)
-project(auto_buff_test)
+project(buff_test)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 大恒 SDK 路径（根据你的实际位置修改）
+# set(DAHENG_SDK_ROOT "/home/pawpaw-ubuntu/rm_ultra/io/GalaxySDK")
+# set(DAHENG_INC_DIR "${DAHENG_SDK_ROOT}/include")
+# set(DAHENG_LIB_DIR "${DAHENG_SDK_ROOT}/lib/armv8")
+
+# 源文件列表
 set(SOURCES
-    ~/rm_ultra/src/auto_buff/src/detector_buff.cpp
-    ~/rm_ultra/src/auto_buff/test/video_test.cpp
-    ~/rm_ultra/src/auto_buff/src/base_buff.cpp
-    ~/rm_ultra/src/auto_buff/src/config.cpp
-    ~/rm_ultra/src/auto_buff/src/fanblade.cpp
-    ~/rm_ultra/src/auto_buff/src/utils.cpp
+    ../energy_node.cpp
 )
 
 find_package(OpenCV REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
-find_package(Eigen3 REQUIRED)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
-add_executable(buff_test ${SOURCES})
+# 查找大恒库（直接指定绝对路径，避免 find_library 出错）
+# set(GxIAPI_LIB "${DAHENG_LIB_DIR}/libgxiapi.so")
+# if(NOT EXISTS ${GxIAPI_LIB})
+#     message(FATAL_ERROR "Cannot find libgxiapi.so at ${GxIAPI_LIB}")
+# endif()
+# message(STATUS "Found GxIAPI: ${GxIAPI_LIB}")
 
-target_include_directories(buff_test PRIVATE
+# 创建可执行文件
+# add_executable(buff ${SOURCES})
+
+add_executable(energy_demo ../energy_node.cpp )
+target_link_libraries(energy_demo ${OpenCV_LIBS})
+
+# 包含头文件目录
+target_include_directories(energy_demo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    # ${DAHENG_INC_DIR}
     ${OpenCV_INCLUDE_DIRS}
-    ${YAML_CPP_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIR}
+    # ${YAML_CPP_INCLUDE_DIRS}
 )
-target_link_libraries(buff_test
+
+# 链接库（注意：GxIAPI_LIB 必须出现在这里）
+target_link_libraries(energy_demo
     ${OpenCV_LIBS}
-    ${YAML_CPP_LIBRARIES}
-    ${EIGEN3_LIBRARIES}
+    # ${YAML_CPP_LIBRARIES}
+    # ${GxIAPI_LIB}
 )
